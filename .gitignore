@@ -33,8 +33,7 @@ build/
 .vscode/
 
 ### Ignore Spring Boot application properties containing secrets ###
-!**/src/main/**/application.properties
-!**/src/main/**/application.yml
+src/main/resources/application.properties
 
 ### Common log/output files ###
 *.log
