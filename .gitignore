@@ -31,3 +31,22 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Ignore Spring Boot application properties containing secrets ###
+!**/src/main/**/application.properties
+!**/src/main/**/application.yml
+
+### Common log/output files ###
+*.log
+
+### Exclude test result directories ###
+/test-output/
+out/
+
+### Exclude OS-specific files ###
+.DS_Store
+Thumbs.db
+
+### Exclude environment or local config files ###
+.env
+.env.*
