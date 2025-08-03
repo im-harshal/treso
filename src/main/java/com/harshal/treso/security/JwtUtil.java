@@ -4,6 +4,7 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -26,7 +27,7 @@ public class JwtUtil {
     }
 
     // Generates a JWT token
-    public String generateToken(String email) {
+    public String generateToken(@NotNull String email) {
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
@@ -36,7 +37,7 @@ public class JwtUtil {
     }
 
     // Extracts username from token
-    public String extractUsername(String token) {
+    public String extractUsername(@NotNull String token) {
         return Jwts.parser()
                 .setSigningKey(secretKey)
                 .build()
@@ -46,7 +47,7 @@ public class JwtUtil {
     }
 
     // Validates the token
-    public boolean validateToken(String authToken, UserDetails userDetails) {
+    public boolean validateToken(@NotNull String authToken,@NotNull UserDetails userDetails) {
         try{
             Claims claims = Jwts.parser()
                     .setSigningKey(secretKey)

@@ -1,9 +1,11 @@
 package com.harshal.treso.controller;
 
-import com.harshal.treso.model.AuthRequest;
+import com.harshal.treso.dto.LoginRequest;
+import com.harshal.treso.dto.RegisterRequest;
 import com.harshal.treso.model.User;
 import com.harshal.treso.repository.UserRepository;
 import com.harshal.treso.security.JwtUtil;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,13 +24,13 @@ public class AuthController {
     private final JwtUtil jwtUtil;
 
     @PostMapping("/register")
-    public String register(@RequestBody AuthRequest request) {
-        if(userRepository.existsByEmail(request.getEmail())) {
+    public String register(@Valid @RequestBody RegisterRequest registerRequest) {
+        if(userRepository.existsByEmail(registerRequest.getEmail())) {
             return "Email already exists";
         }
         User user = User.builder()
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
+                .email(registerRequest.getEmail())
+                .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .role("USER")
                 .build();
         userRepository.save(user);
@@ -36,7 +38,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public String login(@RequestBody AuthRequest request) {
+    public String login(@RequestBody LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UsernameNotFoundException("Email not found"));
         if(passwordEncoder.matches(request.getPassword(), user.getPassword())) {
