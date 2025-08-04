@@ -5,10 +5,13 @@ Treso is a secure REST API for personal expense tracking, built with Java and Sp
 ## 🚀 Features
 
 - User registration & JWT authentication
-- CRUD operations for expenses
-- Pagination support
-- PostgreSQL (or MySQL) persistence
-- Clean error handling
+- CRUD operations for expenses (user-scoped)
+- Pagination & sorting support
+- PostgreSQL persistence
+- Clean validation and error handling
+- OpenAPI/Swagger UI for interactive API docs
+- Actuator metrics for observability
+- **Production-ready Docker support**
 
 ## 🛠️ Getting Started
 
@@ -27,23 +30,28 @@ cp src/main/resources/application-sample.properties src/main/resources/applicati
 
 > **Never commit your filled `application.properties` to git.**
 
-### 3. Set Up the Database
-- Start PostgreSQL (or MySQL).
-- Create a database and user.
+### 3. Run with Docker (Recommended)
+Run with Existing Postgres Container
+```bash
+docker build -t treso-app .
+docker run -p 8080:8080 \
+  --network <your_network> \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://<postgres_container_name>:5432/<db> \
+  -e SPRING_DATASOURCE_USERNAME=<db_user> \
+  -e SPRING_DATASOURCE_PASSWORD=<db_password> \
+  treso-app
+```
+> Replace `<your_network>`, `<postgres_container_name>`, `<db>`, `<db_user>`, `<db_password>` as needed.
 
-### 4. Run the Application
-- **Using IntelliJ IDEA:**
-
-  Open the project and run the `TresoApplication` main class.
-
-- Or with Maven:
-    ```bash
-    ./mvnw spring-boot:run
-    ```
+### 4. Run Locally (with Maven)
+```bash
+./mvnw spring-boot:run
+```
+- By default, connects to PostgreSQL at localhost:5432
 
 ### 📝 Configuration
-- Secrets and passwords are **not committed** to git.
-- Use application-sample.properties as a template.
+- All secrets/configs should be set via environment variables (see `application-sample.properties` for reference).
+- Supports 12-factor app principles for cloud compatibility.
 
 ### 🧾 API Endpoints
 - `POST /api/auth/register` – Register user
@@ -52,8 +60,13 @@ cp src/main/resources/application-sample.properties src/main/resources/applicati
 - `POST /api/expenses` – Create expense
 - `PUT /api/expenses/{id}` – Update expense
 - `DELETE /api/expenses/{id}` – Delete expense
+- `GET /swagger-ui.html` – Swagger UI
+- `GET /actuator/metrics`, `GET /actuator/health`,  `GET /actuator/info`- Metrics
 
-> Built with Spring Boot 3, Java 21, and ❤️ by Harshal Patel
----
-Let me know if you want to tweak or add anything!  
-Ready for your next commit. 🚀
+### 🔒 Security
+- Do NOT commit secrets or passwords to git.
+- Protect `/swagger-ui` and `/actuator` endpoints in production.
+
+Let me know if you want to tweak or add anything! Ready for your next commit. 🚀
+
+> Built with Spring Boot 3, Java 21, Docker and ❤️ by Harshal Patel
