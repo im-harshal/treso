@@ -67,6 +67,44 @@ docker run -p 8080:8080 \
 - Do NOT commit secrets or passwords to git.
 - Protect `/swagger-ui` and `/actuator` endpoints in production.
 
-Let me know if you want to tweak or add anything! Ready for your next commit. 🚀
+## 🌩️ Deploying to AWS EC2 (Overview)
 
-> Built with Spring Boot 3, Java 21, Docker and ❤️ by Harshal Patel
+1. **Launch an Ubuntu EC2 Instance**
+   - Choose a t2.micro or t3.micro (free tier eligible).
+   - Make sure to open port 8080 in the instance's security group.
+
+2. **Install Docker**
+   - SSH into your EC2 instance:
+     ```
+     ssh -i path/to/your-key.pem ubuntu@<ec2-public-ip>
+     ```
+   - Install Docker:
+     ```
+     sudo apt update && sudo apt install -y docker.io
+     sudo usermod -aG docker $USER && newgrp docker
+     ```
+
+3. **Transfer Project Files or Pull Docker Image**
+   - Use `scp` to copy your project, or pull your Docker image from Docker Hub if available.
+
+4. **Build and Run Your Dockerized App**
+   - Build:
+     ```
+     docker build -t treso-app .
+     ```
+   - Run (with Postgres connection details as environment variables):
+     ```
+     docker run -p 8080:8080 \
+       -e SPRING_DATASOURCE_URL=jdbc:postgresql://<host>:5432/<db> \
+       -e SPRING_DATASOURCE_USERNAME=<db_user> \
+       -e SPRING_DATASOURCE_PASSWORD=<db_password> \
+       treso-app
+     ```
+   - Or, use Docker Compose if deploying both app and DB in containers.
+
+5. **Access Your API**
+   - Open `http://<ec2-public-ip>:8080/swagger-ui.html` in your browser.
+
+> **Tip:** For production, set strong secrets and restrict access to Swagger/Actuator endpoints.
+>
+>  Built with Spring Boot 3, Java 21, Docker and ❤️ by Harshal Patel
