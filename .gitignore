@@ -48,4 +48,7 @@ Thumbs.db
 
 ### Exclude environment or local config files ###
 .env
-.env.*
+
+# Kubernetes Secrets
+k8s/*-secret.yaml
+!k8s/*.example

@@ -1,0 +1,54 @@
+---
+# 1. THE DEPLOYMENT (Runs the Spring Boot App)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: treso-app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: treso-app
+  template:
+    metadata:
+      labels:
+        app: treso-app
+    spec:
+      containers:
+        - name: treso-app
+          image: treso-app:local
+          imagePullPolicy: Never # Crucial: Tells K8s to use your local build, not the internet
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://db:5432/treso_db" # Points to the K8s 'db' service we made
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: JWT_SECRET
+
+---
+# 2. THE SERVICE (Exposes the App to your Browser)
+apiVersion: v1
+kind: Service
+metadata:
+  name: treso-app-service
+spec:
+  type: LoadBalancer # Docker Desktop provisions a localhost port for this automatically
+  selector:
+    app: treso-app
+  ports:
+    - port: 8080
+      targetPort: 8080
