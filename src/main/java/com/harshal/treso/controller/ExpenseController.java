@@ -16,17 +16,27 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.harshal.treso.event.ExpenseCreatedEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+
 @RestController
 @RequestMapping("/api/expenses")
 public class ExpenseController {
 
     private final ExpenseRepository expenseRepository;
-
     private final UserRepository userRepository;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
 
-    public ExpenseController(ExpenseRepository expenseRepository, UserRepository userRepository) {
+    @Autowired
+    public ExpenseController(ExpenseRepository expenseRepository, UserRepository userRepository, 
+                             KafkaTemplate<String, String> kafkaTemplate, ObjectMapper objectMapper) {
         this.expenseRepository = expenseRepository;
         this.userRepository = userRepository;
+        this.kafkaTemplate = kafkaTemplate;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping
@@ -40,6 +50,19 @@ public class ExpenseController {
                 .user(user)
                 .build();
         Expense saved = expenseRepository.save(expense);
+
+        // Phase 3: Emit Kafka Event
+        try {
+            ExpenseCreatedEvent event = new ExpenseCreatedEvent(
+                    saved.getId(), user.getId(), saved.getAmount(), saved.getCategory(), saved.getDate()
+            );
+            String eventJson = objectMapper.writeValueAsString(event);
+            kafkaTemplate.send("treso.expenses.events", eventJson);
+        } catch (Exception e) {
+            // In a real app, you might use an Outbox pattern here. For now, just log it.
+            System.err.println("Failed to send Kafka event: " + e.getMessage());
+        }
+
         return mapToExpenseResponse(saved);
     }
 

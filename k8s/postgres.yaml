@@ -1,10 +1,11 @@
 ---
-# 2. THE DEPLOYMENT (Runs the container)
+# 2. THE DATABASE (StatefulSet for data durability)
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: postgres-deployment
+  name: postgres
 spec:
+  serviceName: db
   replicas: 1
   selector:
     matchLabels:
@@ -22,6 +23,17 @@ spec:
           envFrom:
             - secretRef:
                 name: postgres-secret
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 5Gi
 
 ---
 # 3. THE SERVICE (Internal Networking)

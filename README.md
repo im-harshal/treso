@@ -1,110 +1,90 @@
-# Treso
+# Treso: Distributed Expense Tracking API
 
-Treso is a secure REST API for personal expense tracking, built with Java and Spring Boot.
+Treso is a secure, production-ready REST API for personal expense tracking, built with Java and Spring Boot. 
 
-## 🚀 Features
+Originally a standard CRUD application, Treso has been architected into a distributed, event-driven system designed to handle concurrent workloads, prevent data loss, and scale asynchronous processing.
 
-- User registration & JWT authentication
-- CRUD operations for expenses (user-scoped)
-- Pagination & sorting support
-- PostgreSQL persistence
-- Clean validation and error handling
-- OpenAPI/Swagger UI for interactive API docs
-- Actuator metrics for observability
-- **Production-ready Docker support**
+## 🏗️ System Architecture
 
-## 🛠️ Getting Started
+```mermaid
+flowchart TD
+    Client([Client / Postman]) -->|1. HTTP Requests| API[Spring Boot REST API]
+    API <-->|2. Rate Limit & Idempotency| Redis[(Redis)]
+    API <-->|3. Persistence| DB[(PostgreSQL)]
+    API -->|4. Emit Event| Kafka[Apache Kafka]
+    Kafka -->|5. Consume Event| Consumer[Analytics Consumer Service]
+```
 
-### 1. **Clone the Repository**
+## 🚀 Engineering Highlights
+
+- **Event-Driven Architecture:** Utilizes **Apache Kafka** (KRaft mode) to decouple the synchronous CRUD operations from heavy downstream processing (like analytics and notifications).
+- **API Idempotency:** Implements a distributed lock using **Redis** to intercept `Idempotency-Key` headers. This prevents duplicate financial records in the event of client retries or network timeouts.
+- **Rate Limiting:** Protects endpoints from abuse/spam by enforcing a strict requests-per-minute quota on a per-user basis using Redis.
+- **Data Durability:** Orchestrated via **Kubernetes**, deploying PostgreSQL as a `StatefulSet` with PersistentVolumeClaims to guarantee zero data loss during pod restarts.
+- **Secure Authentication:** User registration and route protection using stateless **JWT (JSON Web Tokens)**.
+
+## 🛠️ Tech Stack
+
+- **Core:** Java 21, Spring Boot 3 (Spring Web, Spring Data JPA, Spring Security)
+- **Database:** PostgreSQL
+- **Distributed State / Cache:** Redis
+- **Message Broker:** Apache Kafka (KRaft)
+- **Containerization & Orchestration:** Docker, Docker Compose, Kubernetes
+- **API Documentation:** OpenAPI (Swagger UI)
+
+---
+
+## 💻 Getting Started
+
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/YOUR_USERNAME/treso.git
 cd treso
 ```
 
-### 2. Configure Application Properties
-- Copy the sample config:
+### 2. Run Locally (Docker Compose)
+The easiest way to spin up the entire distributed system locally is via Docker Compose, which will boot PostgreSQL, Redis, Kafka, and the Spring Boot application.
 ```bash
-cp src/main/resources/application-sample.properties src/main/resources/application.properties
+# Build the application image
+docker build -t treso-app:local .
+
+# Spin up the cluster
+docker-compose up -d
 ```
-- Edit `application.properties` and fill in your database details, JWT secret, etc.
 
-> **Never commit your filled `application.properties` to git.**
+### 3. Run on Kubernetes (Minikube / Docker Desktop)
+Treso includes a complete suite of production-ready Kubernetes manifests in the `k8s/` directory.
 
-### 3. Run with Docker (Recommended)
-Run with Existing Postgres Container
 ```bash
-docker build -t treso-app .
-docker run -p 8080:8080 \
-  --network <your_network> \
-  -e SPRING_DATASOURCE_URL=jdbc:postgresql://<postgres_container_name>:5432/<db> \
-  -e SPRING_DATASOURCE_USERNAME=<db_user> \
-  -e SPRING_DATASOURCE_PASSWORD=<db_password> \
-  treso-app
+# 1. Apply the secrets
+cp k8s/postgres-secret.yaml.example k8s/postgres-secret.yaml
+kubectl apply -f k8s/postgres-secret.yaml
+
+# 2. Deploy Stateful Infrastructure (DB, Cache, Broker)
+kubectl apply -f k8s/postgres.yaml
+kubectl apply -f k8s/redis.yaml
+kubectl apply -f k8s/kafka.yaml
+
+# 3. Deploy the Spring Boot API
+kubectl apply -f k8s/treso.yaml
 ```
-> Replace `<your_network>`, `<postgres_container_name>`, `<db>`, `<db_user>`, `<db_password>` as needed.
 
-### 4. Run Locally (with Maven)
-```bash
-./mvnw spring-boot:run
-```
-- By default, connects to PostgreSQL at localhost:5432
+*Note: The application is exposed via a LoadBalancer on port 8080. If your LoadBalancer is pending locally, access it by running: `kubectl port-forward svc/treso-app-service 8080:8080`*
 
-### 📝 Configuration
-- All secrets/configs should be set via environment variables (see `application-sample.properties` for reference).
-- Supports 12-factor app principles for cloud compatibility.
+---
 
-### 🧾 API Endpoints
-- `POST /api/auth/register` – Register user
-- `POST /api/auth/login` – Login (JWT)
-- `GET /api/expenses` – List expenses
-- `POST /api/expenses` – Create expense
-- `PUT /api/expenses/{id}` – Update expense
-- `DELETE /api/expenses/{id}` – Delete expense
-- `GET /swagger-ui.html` – Swagger UI
-- `GET /actuator/metrics`, `GET /actuator/health`,  `GET /actuator/info`- Metrics
+## 🧾 API Endpoints & Testing
 
-### 🔒 Security
-- Do NOT commit secrets or passwords to git.
-- Protect `/swagger-ui` and `/actuator` endpoints in production.
+- **Swagger UI:** `http://localhost:8080/swagger-ui.html`
+- **Auth:** `POST /api/auth/register`, `POST /api/auth/login`
+- **Expenses:** `GET /api/expenses`, `POST /api/expenses`, `PUT /api/expenses/{id}`, `DELETE /api/expenses/{id}`
 
-## 🌩️ Deploying to AWS EC2 (Overview)
+### Testing Idempotency
+To test the Redis idempotency lock, add an `Idempotency-Key` header (e.g., `Idempotency-Key: test-123`) to a `POST /api/expenses` request. If you fire the exact same request twice within 5 minutes, the API will safely reject the second request with a `409 Conflict`.
 
-1. **Launch an Ubuntu EC2 Instance**
-   - Choose a t2.micro or t3.micro (free tier eligible).
-   - Make sure to open port 8080 in the instance's security group.
+### Testing Rate Limiting
+Authenticated users are limited to 20 requests per minute. Exceeding this threshold by spamming an endpoint will result in a `429 Too Many Requests` response.
 
-2. **Install Docker**
-   - SSH into your EC2 instance:
-     ```
-     ssh -i path/to/your-key.pem ubuntu@<ec2-public-ip>
-     ```
-   - Install Docker:
-     ```
-     sudo apt update && sudo apt install -y docker.io
-     sudo usermod -aG docker $USER && newgrp docker
-     ```
+---
 
-3. **Transfer Project Files or Pull Docker Image**
-   - Use `scp` to copy your project, or pull your Docker image from Docker Hub if available.
-
-4. **Build and Run Your Dockerized App**
-   - Build:
-     ```
-     docker build -t treso-app .
-     ```
-   - Run (with Postgres connection details as environment variables):
-     ```
-     docker run -p 8080:8080 \
-       -e SPRING_DATASOURCE_URL=jdbc:postgresql://<host>:5432/<db> \
-       -e SPRING_DATASOURCE_USERNAME=<db_user> \
-       -e SPRING_DATASOURCE_PASSWORD=<db_password> \
-       treso-app
-     ```
-   - Or, use Docker Compose if deploying both app and DB in containers.
-
-5. **Access Your API**
-   - Open `http://<ec2-public-ip>:8080/swagger-ui.html` in your browser.
-
-> **Tip:** For production, set strong secrets and restrict access to Swagger/Actuator endpoints.
->
->  Built with Spring Boot 3, Java 21, Docker and ❤️ by Harshal Patel
+> Built with Spring Boot, Java 21, and ❤️ by Harshal Patel

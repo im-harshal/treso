@@ -17,7 +17,7 @@ spec:
       containers:
         - name: treso-app
           image: treso-app:local
-          imagePullPolicy: Never # Crucial: Tells K8s to use your local build, not the internet
+          imagePullPolicy: IfNotPresent # Crucial: Tells K8s to use your local build, not the internet
           ports:
             - containerPort: 8080
           env:
@@ -38,6 +38,10 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: JWT_SECRET
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis"
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka:9092"
 
 ---
 # 2. THE SERVICE (Exposes the App to your Browser)
